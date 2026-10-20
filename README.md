@@ -1,116 +1,26 @@
-What is this?
-
-A web page (one file: index.html) that talks to the Smooth 4 over Bluetooth. It shows an on-screen joystick: move your finger and the gimbal moves. You can also use the keyboard (arrow keys or WASD) or a gamepad.
-
-It was made for this setup: a phone is mounted on the gimbal for video calls, and you steer the gimbal from another device (PC or a second phone).
-
-What you need
-A Zhiyun Smooth 4 gimbal, turned on
-Chrome or Edge (PC or Android). Safari and Firefox do not work: they have no Bluetooth for web pages
-The Zhiyun app closed: the gimbal accepts only one connection at a time
-The page opened from an https:// address (for example GitHub Pages) or from http://localhost
-How to use it (5 steps)
-Open the page: https://YOUR-USERNAME.github.io/smooth4-web-controller/
-Press Connetti (Connect) and pick your gimbal from the list
-Set a low speed for your first tests
-Move the knob (or use the arrow keys). When you let go, the gimbal stops
-If in doubt, press STOP (or the space bar)
-
-💡 If it won't connect, type the service UUID in the field. The page tries fee9 by itself, which other Zhiyun gimbals use. The interface is in Italian for now. Translations are welcome!
-
-What works and what doesn't (the honest truth)
-Feature	Status
-Bluetooth connection and joystick	✅ Tested on the author's Smooth 4
-Message error check (CRC)	✅ Verified on 5 real messages
-Up/down movement (tilt)	✅ Confirmed by Karim Jedda's article
-Left/right (pan) and rotation (roll)	🟡 Very likely, please check on your gimbal
-Battery, version, position, modes (PF, L, F, POV, GO)	🟡 Taken from another model (Weebill-S). Not verified on the Smooth 4
-Saved positions, face tracking, gestures, voice commands	💡 Ideas for the future, not built yet
-
-The page has a Laboratory and a Commands panel so you can test things yourself. Watch what the Log shows.
-
-How it works (in simple words)
-
-The gimbal receives small Bluetooth messages. Each message says "move this axis with this strength". The strength is a number from 0 to 4095, where 2048 means stopped.
-
-The gimbal only moves while messages keep arriving. That's why the page repeats them every 0.07 seconds while you hold the knob. Technical details are in PROTOCOL.md.
-
-Want to help? 🙌
-
-Do you own a Smooth 4 (or another Zhiyun gimbal)?
-
-Open the page and try the buttons in the Commands panel
-Copy what you see in the Log
-Open an Issue here on GitHub with your gimbal model and what happened
-
-Even one line helps us complete the command table.
-
-🙏 Thanks and credits
-
-This project exists thanks to other people's work.
-
-Karim Jedda: heartfelt thanks! His article Controlling a Zhiyun Smooth 4 gimbal with Raspberry Pi made this work much easier. The real Smooth 4 messages, the Bluetooth addresses and the starting idea come from there.
-Peter Maguire: his study of the Weebill-S gimbal (article and bleebil repository) explains how Zhiyun messages are built, the fee9 service and many commands.
-The code was written with the help of an AI assistant (Claude, by Anthropic).
-Disclaimer
-
-Use everything at your own risk. Do your first tests at low speed with the gimbal still and unobstructed. The names Zhiyun and Smooth belong to their owners.
-
-#Italiano
-Cos'è questo progetto?
-
-È una pagina web (un solo file: index.html) che parla con lo Smooth 4 tramite Bluetooth. Ti mostra un joystick sullo schermo: muovi il dito e il gimbal si muove. Puoi usare anche la tastiera (frecce o WASD) o un gamepad.
-
-L'idea nasce da qui: il telefono è montato sul gimbal per fare videochiamate, e il gimbal si comanda da un altro dispositivo (PC o secondo telefono).
-
-Cosa ti serve
-Un gimbal Zhiyun Smooth 4, acceso
-Chrome o Edge (PC o Android). Safari e Firefox non funzionano: non hanno il Bluetooth per le pagine web
-L'app Zhiyun chiusa: il gimbal accetta un solo collegamento alla volta
-La pagina aperta da un indirizzo https:// (per esempio GitHub Pages) oppure da http://localhost
-Come si usa (5 passi)
-Apri la pagina: https://TUO-UTENTE.github.io/smooth4-web-controller/
-Premi Connetti e scegli il tuo gimbal dalla lista
-Metti la velocità bassa per i primi test
-Muovi il pallino (o usa le frecce). Quando lasci, il gimbal si ferma
-In caso di dubbio premi STOP (o la barra spaziatrice)
-
-💡 Se non si collega, scrivi l'UUID del service nel campo apposito. La pagina prova da sola fee9, che è quello usato da altri gimbal Zhiyun.
-
-Cosa funziona e cosa no (la verità)
-Funzione	Stato
-Collegamento Bluetooth e joystick	✅ Provato sullo Smooth 4 dell'autore
-Controllo errori dei messaggi (CRC)	✅ Verificato su 5 messaggi reali
-Movimento su/giù (tilt)	✅ Confermato dall'articolo di Karim Jedda
-Destra/sinistra (pan) e rotazione (roll)	🟡 Molto probabile, da verificare sul tuo gimbal
-Batteria, versione, posizione, modi (PF, L, F, POV, GO)	🟡 Presi da un altro modello (Weebill-S). Non verificati sullo Smooth 4
-Posizioni salvate, inseguimento del volto, gesti, comandi vocali	💡 Idee per il futuro, non ancora fatte
-
-La pagina ha un Laboratorio e un pannello Comandi per provare le cose da soli. Guarda cosa risponde il Registro.
-
-Come funziona (spiegato semplice)
-
-Il gimbal riceve piccoli messaggi Bluetooth. Ogni messaggio dice: "muovi questo asse con questa forza". La forza è un numero da 0 a 4095, dove 2048 significa fermo.
-
-Il gimbal si muove solo finché i messaggi continuano ad arrivare. Per questo la pagina li ripete ogni 0,07 secondi finché tieni premuto. I dettagli tecnici sono in PROTOCOL.md.
-
-Vuoi aiutare? 🙌
-
-Hai uno Smooth 4 (o un altro gimbal Zhiyun)?
-
-Apri la pagina e prova i pulsanti del pannello Comandi
-Copia quello che vedi nel Registro
-Apri una Issue qui su GitHub e scrivi il modello del gimbal e cosa è successo
-
-Anche una sola riga aiuta a completare la tabella dei comandi.
-
-🙏 Ringraziamenti
-
-Questo progetto esiste grazie al lavoro di altre persone.
-
-Karim Jedda: grazie di cuore! Il suo articolo Controlling a Zhiyun Smooth 4 gimbal with Raspberry Pi ha semplificato moltissimo il lavoro. Da lì arrivano i messaggi reali dello Smooth 4, gli indirizzi Bluetooth e l'idea di partenza.
-Peter Maguire: il suo studio sul gimbal Weebill-S (articolo e repository bleebil) spiega come sono fatti i messaggi della famiglia Zhiyun, il service fee9 e molti comandi.
-Il codice è stato scritto con l'aiuto di un assistente IA (Claude, di Anthropic).
-Avviso
-
-Usa tutto a tuo rischio. Fai i primi test con velocità bassa e con il gimbal fermo e libero. I nomi Zhiyun e Smooth appartengono ai loro proprietari.
+Zhiyun Smooth 4 Web BLE Controller🚀 LIVE DEMO / PROVALO SUBITONon serve installare nulla! Se vuoi provare l'applicazione subito dal tuo telefono o PC, apri il link:👉 https://superlative-pavlova-45e320.netlify.app📑 Technical Documentation / Documentazione TecnicaTechnical notes for developers and makers who want to understand, test, or extend the Bluetooth protocol for the Zhiyun Smooth 4.Legend: ✅ Verified · 🟡 Likely · ❓ Not Verified1. 📡 Bluetooth ConnectionParameterValue / UUIDStatusDescriptionServicefee9 (0000fee9-0000-1000-8000-00805f9b34fb)🟡Standard service used by Weebill-S and Smooth 4 familyWrite Characteristicd44bc439-abfd-45a2-b575-925416129600✅Primary command handle (0x0012, writeValueWithoutResponse)Notificationsd44bc439-abfd-45a2-b575-925416129601...✅Status and telemetry notifications⚠️ Important: The gimbal accepts only one Bluetooth connection at a time. Make sure to close the official Zhiyun ZY Cami/Play app before connecting via browser.2. 📦 Message Packet StructurePackets consist of a 14-byte binary payload structured as follows:Plaintext┌────────┬─────────┬────────┬─────────┬────────┬─────────┬──────────────┬────────────────────┐
+│ Header │ Payload │ Fixed  │ Counter │ Source │ Command │     Data     │  CRC16 (Little-E)  │
+│ 24 3c  │  08 00  │ 18 12  │   SS    │   01   │   CC    │  D0 D1 D2    │       RR RR        │
+└────────┴─────────┴────────┴─────────┴────────┴─────────┴──────────────┴────────────────────┘
+BytesFieldMeaning & ValueStatus0 - 1HeaderMagic bytes: 24 3c (Start of Packet)✅2 - 3LengthPayload size (Little-Endian). Standard: 08 00 (8 bytes)✅4 - 5FixedFixed control header: 18 12✅6CounterIncremental sequence number (SS). Prevents duplicated packet execution🟡7SourceOrigin identifier: 01 (App to Gimbal). Replies use 10✅8CommandAxis or system command code (CC)✅9 - 11DataMotion data format: 10 + 16-bit Little-Endian position value✅12 - 13CRC16CRC16-XMODEM calculated across bytes 4 to 11 (Little-Endian)✅⚙️ CRC16 CalculationAlgorithm: CRC16 XMODEM (Polynomial 0x1021, Initial Value 0x0000, No Reflection, XOR Out 0x0000).Scope: Calculated strictly over the 8 payload bytes (18 12 through data byte D2).JavaScript// JavaScript implementation
+function crc16(bytes) {
+  let c = 0;
+  for (const b of bytes) {
+    c ^= b << 8;
+    for (let i = 0; i < 8; i++) {
+      c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF;
+    }
+  }
+  return c;
+}
+🔍 Verified Payload ExamplesHex Packet PayloadCounter (SS)Command (CC)Decoded ValueAxis State243c08001812730102100008d87a73012048 (0x0800)Neutral / Stop243c0800181274010310d40e087d74013796 (0x0ED4)Up (Fast)243c080018123c0101102c01b59c3c01300 (0x012C)Down (Fast)3. 🕹️ Axis & Movement ControlCommand Code (CC)Target AxisMovement DirectionStatus01TiltUp / Down✅02PanLeft / Right🟡03RollClockwise / Counter-Clockwise🟡Raw Value Range: 0 to 4095Neutral Point: 2048 (Motors stationary)Active Speeds: 300 (Max Reverse) ⟵ 2048 ⟶ 3796 (Max Forward)💡 Keep-Alive Loop Requirement: The gimbal expects a continuous stream of motor update packets. A single command packet will only move the motor for a fraction of a second. To keep the gimbal moving continuously, repeat the current axis state every ~50ms to 70ms. Send 2048 to stop.4. 🧪 Extended Command Codes (Experimental) ❓Commands reverse-engineered from the Zhiyun Weebill-S protocol stack (same family). For read operations, set data bytes to 00 00 00.Plaintext┌──────┬─────────────────────────────────────────────────────────┐
+│ Code │ Description                                             │
+├──────┼─────────────────────────────────────────────────────────┤
+│  04  │ Software / Firmware Version Read                        │
+│  06  │ Battery Level Read (0 - 100%)                           │
+│  22  │ Read Current Tilt Angle Position                        │
+│  23  │ Read Current Roll Angle Position                        │
+│  24  │ Read Current Pan Angle Position                         │
+│  27  │ Set Mode (Data: 80 MM 00 | MM = 00:PF, 01:L, 02:F, 03:POV)│
+└──────┴─────────────────────────────────────────────────────────┘
+5. 🤝 How to Contribute & VerifyOpen the Live Demo.Connect your Zhiyun Smooth 4 and open the Diagnostic Console.Perform test movements or queries and copy the generated TX / RX log lines.Submit a GitHub Issue or Pull Request with your findings, firmware version, and device logs!📚 References & CreditKarim Jedda: Controlling a Zhiyun Smooth 4 gimbal with Raspberry Pi (Medium Guide)Peter Maguire: Zhiyun Weebill-S BLE Protocol Analysis & Bleebil Repo (Blog | GitHub)
