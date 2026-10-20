@@ -6,7 +6,7 @@ Includes Gesture Control, Motion Routines, Air Mouse, Voice Commands, and Motion
 # 🚀 LIVE DEMO / PROVALO SUBITO
 Non serve installare nulla! Se vuoi provare l'applicazione subito dal tuo telefono o PC, apri il link qui sotto:
 
-You Want to test on your Gimbal👉 https://zy-controller.netlify.app
+You Want to test on your Gimbal👉 https://zhy-controller.netlify.app
 
 📑 Technical Documentation / Documentazione Tecnica
 Technical notes for developers and makers who want to understand, test, or extend the Bluetooth protocol for the Zhiyun Smooth 4.
