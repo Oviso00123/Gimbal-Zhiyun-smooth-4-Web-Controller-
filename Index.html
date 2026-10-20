@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#060913">
+  <title>Zhiyun Smooth 4 - Cyber Controller</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Face Detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              bg: '#060913',
+              card: 'rgba(15, 23, 42, 0.65)',
+              border: 'rgba(255, 255, 255, 0.08)',
+              cyan: '#00f2fe',
+              blue: '#4facfe',
+              pink: '#ff007f',
+              emerald: '#10b981',
+              amber: '#f59e0b'
+            }
+          },
+          boxShadow: {
+            'neon-cyan': '0 0 20px rgba(0, 242, 254, 0.35)',
+            'neon-pink': '0 0 20px rgba(255, 0, 127, 0.45)',
+            'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Reset & Touch Ergonomics */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    
+    /* FIX MOBILE SCROLLING: mai più altezze rigide bloccate su body */
+    html, body {
+      min-height: 100%;
+      height: auto;
+      overflow-x: hidden;
+      background-color: #060913;
+      color: #e2e8f0;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Glassmorphism Classes */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    .glass-panel-glow {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 242, 254, 0.25);
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.15);
+    }
+
+    /* Joystick isolato: solo lui non propaga il touch scroll */
+    #joystick-zone {
+      touch-action: none;
+    }
+
+    /* Scrollbar sottile cyberpunk */
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0, 242, 254, 0.3); border-radius: 4px; }
+  </style>
+</head>
+
+<body class="flex flex-col font-sans select-none antialiased">
+
+  <!-- ========================================================================= -->
+  <!-- 1. STICKY TOP HUD BAR (CYBERPUNK STATUS & EMERGENCY)                      -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 w-full glass-panel border-b border-white/10 px-3 py-2 flex items-center justify-between shadow-lg">
+    <!-- Brand & Stato -->
+    <div class="flex items-center gap-2">
+      <div id="status-led" class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse"></div>
+      <div class="flex flex-col">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+            SMOOTH 4
+          </span>
+          <span id="ble-state-badge" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-red-950/80 border border-red-500/30 text-red-400 font-bold">
+            DISCONNESSO
+          </span>
+        </div>
+        <span id="sub-device-name" class="text-[9px] text-slate-400 font-mono truncate max-w-[110px]">BLE Inattivo</span>
+      </div>
+    </div>
+
+    <!-- Battery, Help & Emergency Kill -->
+    <div class="flex items-center gap-2">
+      <!-- Indicatore Batteria Normalizzata -->
+      <div id="batt-pill" class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900/90 border border-slate-700/80 text-xs font-mono">
+        <svg id="batt-svg" class="w-3.5 h-3.5 text-emerald-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2H4zm13 4a1 1 0 011 1v2a1 1 0 01-1 1v-4z"/>
+        </svg>
+        <span id="batt-val" class="font-bold text-slate-200">--%</span>
+      </div>
+
+      <!-- Pulsante Guida / Tutorial -->
+      <button id="btn-open-guide" class="p-1.5 bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-cyan-400 rounded-lg border border-cyan-500/30 text-xs font-bold transition flex items-center gap-1" title="Manuale d'uso">
+        <span>❓</span>
+      </button>
+
+      <!-- Kill Switch di Emergenza ROSSO NEON -->
+      <button id="btn-emergency-stop" class="px-3 py-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-90 text-white font-black text-xs rounded-lg shadow-neon-pink uppercase tracking-wider transition flex items-center gap-1">
+        <span>🛑</span>
+        <span>STOP</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- BANNER ALLERTA BATTERIA CRITICA (< 20%) -->
+  <div id="batt-alert-banner" class="hidden bg-rose-950/90 border-b border-rose-600 px-3 py-1.5 text-center text-xs font-bold text-rose-200 flex items-center justify-center gap-2 animate-bounce z-30">
+    <svg class="w-4 h-4 text-rose-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <span>BATTERIA GIMBAL SOTTO IL 20%! Spegnimento imminente.</span>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. HERO GLASS DASHBOARD (CONNESSIONE & TELEMETRIA RAPIDA)                 -->
+  <!-- ========================================================================= -->
+  <section class="w-full max-w-xl mx-auto px-3 pt-3">
+    <div class="glass-panel rounded-2xl p-3.5 relative overflow-hidden">
+      <!-- Glow decorativo cyberpunk -->
+      <div class="absolute -right-10 -top-10 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- Pulsantone Connessione Bluetooth -->
+      <div class="flex flex-col sm:flex-row gap-2.5">
+        <button id="btn-connect-ble" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-[0.98] text-slate-950 font-black text-sm tracking-wider uppercase transition shadow-neon-cyan flex items-center justify-center gap-2">
+          <svg class="w-5 h-5 text-slate-950 animate-spin" id="ble-spin-icon" style="display:none;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          <span id="btn-connect-text">⚡ CONNETTI SMOOTH 4</span>
+        </button>
+
+        <button id="btn-disconnect-ble" disabled class="py-3 px-4 rounded-xl bg-slate-900 border border-slate-700/80 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-300 font-bold text-xs uppercase tracking-wider transition">
+          Scollega
+        </button>
+      </div>
+
+      <!-- Telemetria Rapida in Chips -->
+      <div class="grid grid-cols-4 gap-1.5 mt-3 text-center font-mono">
+        <div class="bg-slate-950/70 border border-white/5 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-slate-400 uppercase">Pan (X)</div>
+          <div id="telemetry-pan" class="text-xs font-bold text-cyan-400">2048</div>
+        </div>
+        <div class="bg-slate-950/70 border border-white/5 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-slate-400 uppercase">Tilt (Y)</div>
+          <div id="telemetry-tilt" class="text-xs font-bold text-cyan-400">2048</div>
+        </div>
+        <div class="bg-slate-950/70 border border-white/5 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-slate-400 uppercase">Velocità</div>
+          <div id="telemetry-speed" class="text-xs font-bold text-purple-400">±1400</div>
+        </div>
+        <div class="bg-slate-950/70 border border-white/5 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-slate-400 uppercase">Glide</div>
+          <div id="telemetry-glide" class="text-xs font-bold text-emerald-400">ON</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- 3. SEGMENTED TABS (NAVIGAZIONE ORIZZONTALE TOUCH)                          -->
+  <!-- ========================================================================= -->
+  <nav class="sticky top-[58px] z-30 w-full max-w-xl mx-auto px-3 py-2 bg-cyber-bg/90 backdrop-blur-md">
+    <div class="glass-panel p-1 rounded-xl grid grid-cols-4 gap-1 text-center font-bold text-xs">
+      <button class="nav-tab active-tab py-2 px-1 rounded-lg transition-all flex items-center justify-center gap-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" data-target="tab-controls">
+        <span>🕹️</span>
+        <span class="truncate">Drive</span>
+      </button>
+      <button class="nav-tab py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1" data-target="tab-vision">
+        <span>👁️</span>
+        <span class="truncate">Vision AI</span>
+      </button>
+      <button class="nav-tab py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1" data-target="tab-routines">
+        <span>🎬</span>
+        <span class="truncate">Routines</span>
+      </button>
+      <button class="nav-tab py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1" data-target="tab-settings">
+        <span>⚙️</span>
+        <span class="truncate">Config</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================================================= -->
+  <!-- 4. MAIN SCROLLABLE CONTENT (NESSUN BLOCCO TOUCH - NATURALE AL 100%)       -->
+  <!-- ========================================================================= -->
+  <main class="w-full max-w-xl mx-auto px-3 pb-24 space-y-4 flex-1">
+
+    <!-- ==================== TAB 1: GUIDA & JOYSTICK (THUMB ZONE) ============= -->
+    <div id="tab-controls" class="tab-content space-y-4">
+      
+      <!-- Ergonomic Thumb Joystick Card -->
+      <div class="glass-panel-glow rounded-3xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+        <div class="w-full flex justify-between items-center mb-3">
+          <span class="text-[11px] font-black tracking-wider text-cyan-400 uppercase flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            ERGONOMIC THUMB STICK
+          </span>
+          <button id="btn-recenter" class="text-[10px] font-mono px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 active:scale-95">
+            🎯 RICENTRA
+          </button>
+        </div>
+
+        <!-- Touch Pad ergonomico per pollice smartphone -->
+        <div id="joystick-zone" class="w-64 h-64 sm:w-72 sm:h-72 rounded-full bg-slate-950/90 border-2 border-cyan-500/30 relative flex items-center justify-center shadow-inner cursor-pointer select-none">
+          <!-- Crosshair cyberpunk -->
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+            <div class="w-full h-[1px] bg-cyan-400"></div>
+            <div class="h-full w-[1px] bg-cyan-400 absolute"></div>
+            <div class="w-36 h-36 rounded-full border border-cyan-400"></div>
+          </div>
+          <!-- Manopola Stick -->
+          <div id="joystick-knob" class="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 border-2 border-white shadow-neon-cyan absolute flex items-center justify-center transition-transform duration-75">
+            <div class="w-4 h-4 rounded-full bg-slate-950/60"></div>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-slate-400 font-mono mt-3">Tocca e trascina con il pollice. Al rilascio torna a 2048.</p>
+      </div>
+
+      <!-- Presets Velocità con Emoji -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Preset Velocità Guida</span>
+          <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 font-mono">
+            <input type="checkbox" id="chk-glide" checked class="accent-cyan-400 rounded">
+            <span>Cinematic Glide</span>
+          </label>
+        </div>
+        <div id="speed-presets-container" class="grid grid-cols-3 gap-2">
+          <!-- Popolato dinamicamente da JS -->
+        </div>
+      </div>
+
+      <!-- Quick Positions (Posizioni Rapide a 1 Tocco) -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Quick-Save Posizioni</span>
+          <button id="btn-add-quick-pos" class="text-[11px] font-bold px-2 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/30 active:scale-95 transition">
+            + Memorizza Qui
+          </button>
+        </div>
+        <div id="quick-positions-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <!-- Popolato dinamicamente da JS -->
+        </div>
+      </div>
+
+      <!-- Air Mouse (Motion Steering Giroscopio) -->
+      <div class="glass-panel rounded-2xl p-3.5 flex items-center justify-between">
+        <div class="flex flex-col">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-200">Giroscopio Air Mouse</span>
+          <span class="text-[10px] text-slate-400">Sterza il gimbal inclinando il telefono</span>
+        </div>
+        <button id="btn-toggle-gyro" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-slate-700 bg-slate-900 text-slate-300 active:scale-95 transition">
+          OFF
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 2: VISION & CAMERA AI ======================== -->
+    <div id="tab-vision" class="tab-content hidden space-y-4">
+      
+      <!-- Video Tracking Preview -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Vision Tracker & Gestures</span>
+          <span id="vision-status-chip" class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400">
+            STANDBY
+          </span>
+        </div>
+
+        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+          <video id="ai-video" class="absolute inset-0 w-full h-full object-cover -scale-x-100" playsinline muted></video>
+          <canvas id="ai-canvas" class="absolute inset-0 w-full h-full object-cover -scale-x-100"></canvas>
+          <div id="ai-placeholder" class="text-xs text-slate-500 text-center p-4">
+            Fotocamera non attiva.<br>Seleziona una modalità AI qui sotto.
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-toggle-hands" class="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <span>✋</span> Gesti Mani
+          </button>
+          <button id="btn-toggle-face" class="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-purple-500 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <span>👤</span> Face Mirroring
+          </button>
+        </div>
+      </div>
+
+      <!-- Guida ai Gesti Riconosciuti -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Mappatura Gesti MediaPipe</span>
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+          <div class="p-2 bg-slate-950/70 rounded-xl border border-white/5">
+            <div class="text-cyan-400 font-bold">🖐️ Palmo Aperto</div>
+            <div class="text-[10px] text-slate-400">Stop immediato (2048)</div>
+          </div>
+          <div class="p-2 bg-slate-950/70 rounded-xl border border-white/5">
+            <div class="text-emerald-400 font-bold">✊ Pugno Chiuso</div>
+            <div class="text-[10px] text-slate-400">Ricentra gimbal</div>
+          </div>
+          <div class="p-2 bg-slate-950/70 rounded-xl border border-white/5">
+            <div class="text-amber-400 font-bold">☝️ Solo Indice</div>
+            <div class="text-[10px] text-slate-400">Pan sinistra / destra</div>
+          </div>
+          <div class="p-2 bg-slate-950/70 rounded-xl border border-white/5">
+            <div class="text-purple-400 font-bold">👌 Segno OK</div>
+            <div class="text-[10px] text-slate-400">Avvia prima Routine</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audio Voice Tracking -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2">
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-200">Audio Voice Tracker</span>
+            <p class="text-[10px] text-slate-400">Scansiona o si orienta sui picchi della voce</p>
+          </div>
+          <button id="btn-toggle-audio" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-slate-700 bg-slate-900 text-slate-300 active:scale-95 transition">
+            OFF
+          </button>
+        </div>
+        <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+          <div id="audio-vu-bar" class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-75" style="width: 0%"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 3: ROUTINES & J.A.R.V.I.S. VOICE ============= -->
+    <div id="tab-routines" class="tab-content hidden space-y-4">
+      
+      <!-- J.A.R.V.I.S. Voice Commands -->
+      <div class="glass-panel-glow rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🎙️</span>
+            <div>
+              <div class="text-xs font-black uppercase tracking-wider text-cyan-300">J.A.R.V.I.S. Control</div>
+              <div class="text-[9px] text-slate-400 font-mono">Comandi Vocali in Italiano</div>
+            </div>
+          </div>
+          <button id="btn-toggle-jarvis" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 active:scale-95 transition">
+            ATTIVA
+          </button>
+        </div>
+
+        <div class="bg-slate-950/80 p-3 rounded-xl border border-white/5 font-mono text-xs">
+          <span class="text-[10px] text-slate-500 uppercase">Trascrizione Live:</span>
+          <div id="jarvis-transcript" class="text-cyan-400 font-semibold italic mt-0.5">"In attesa di comando vocale..."</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400">
+          <div>• "Su" / "Giù" (Tilt)</div>
+          <div>• "Destra" / "Sinistra" (Pan)</div>
+          <div>• "Centro" / "Ricentra"</div>
+          <div>• "Stop" / "Ferma"</div>
+        </div>
+      </div>
+
+      <!-- Motion Routines List -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Motion Routines Programmabili</span>
+          <button id="btn-new-routine" class="text-[11px] font-bold px-2 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/30 active:scale-95 transition">
+            + Crea Routine
+          </button>
+        </div>
+        <div id="routines-list" class="space-y-2">
+          <!-- Popolato dinamicamente da JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 4: CONFIGURAZIONE & SYSTEM LOG =============== -->
+    <div id="tab-settings" class="tab-content hidden space-y-4">
+      
+      <!-- Profili Scenario -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2.5">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Profili di Guida Rapidi</span>
+        <div class="grid grid-cols-3 gap-2">
+          <button class="profile-btn bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 py-2 rounded-xl text-xs font-mono active:scale-95" data-profile="desk">
+            💻 Scrivania
+          </button>
+          <button class="profile-btn bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 py-2 rounded-xl text-xs font-mono active:scale-95" data-profile="walk">
+            🚶 Camminata
+          </button>
+          <button class="profile-btn bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 py-2 rounded-xl text-xs font-mono active:scale-95" data-profile="cine">
+            🎬 Cinema
+          </button>
+        </div>
+      </div>
+
+      <!-- Inversione Assi -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Inversione Assi Motori</span>
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+          <label class="flex items-center gap-2 p-2 bg-slate-950/70 rounded-xl border border-white/5 cursor-pointer">
+            <input type="checkbox" id="chk-inv-x" class="accent-cyan-400 rounded">
+            <span>Inverti Pan (X)</span>
+          </label>
+          <label class="flex items-center gap-2 p-2 bg-slate-950/70 rounded-xl border border-white/5 cursor-pointer">
+            <input type="checkbox" id="chk-inv-y" class="accent-cyan-400 rounded">
+            <span>Inverti Tilt (Y)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Ble Traffic Hex Log -->
+      <div class="glass-panel rounded-2xl p-3.5 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">BLE Traffic Monitor (0x0012)</span>
+          <button id="btn-clear-log" class="text-[9px] text-slate-500 hover:text-slate-300 font-mono">Pulisci</button>
+        </div>
+        <div id="hex-console" class="h-32 bg-slate-950 rounded-xl p-2 font-mono text-[9px] text-emerald-400 overflow-y-auto custom-scroll leading-relaxed border border-white/5 select-text">
+          <div class="text-slate-600">// In attesa di connessione Smooth 4...</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 5. MODALE GUIDA & TUTORIAL COMPLETO (HELP CENTER)                         -->
+  <!-- ========================================================================= -->
+  <div id="modal-guide" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="glass-panel-glow bg-slate-900 border border-cyan-500/40 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+      
+      <!-- Header Modale -->
+      <div class="p-4 border-b border-white/10 flex items-center justify-between bg-slate-950/50">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📖</span>
+          <h2 class="text-sm font-black text-cyan-300 uppercase tracking-wider">Guida & Istruzioni Smooth 4</h2>
+        </div>
+        <button id="btn-close-guide" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold">
+          ✕
+        </button>
+      </div>
+
+      <!-- Contenuto Guida con Accordion / Scroll -->
+      <div class="p-4 overflow-y-auto custom-scroll space-y-3 text-xs leading-relaxed">
+        
+        <!-- Passo 1 -->
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-white/5 space-y-1">
+          <h3 class="font-bold text-cyan-400 flex items-center gap-1.5 text-sm">
+            <span>1.</span> Connessione Bluetooth BLE
+          </h3>
+          <p class="text-slate-300">
+            • Accendi lo Zhiyun Smooth 4 tenendo premuto il pulsante di accensione laterale.<br>
+            • Tocca il pulsante <strong>"⚡ CONNETTI SMOOTH 4"</strong> in alto.<br>
+            • Nella finestra di dialogo di Chrome, seleziona il dispositivo Smooth 4 (o gimbal Zhiyun). L'app collegherà automaticamente il Service <code class="text-cyan-300 font-mono">0x0012</code> a 55ms.
+          </p>
+        </div>
+
+        <!-- Passo 2 -->
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-white/5 space-y-1">
+          <h3 class="font-bold text-cyan-400 flex items-center gap-1.5 text-sm">
+            <span>2.</span> Giroscopio & Air Mouse
+          </h3>
+          <p class="text-slate-300">
+            • Toccando il pulsante <strong>"Giroscopio Air Mouse"</strong> abiliti i sensori di orientamento del telefono.<br>
+            • <em>Su iPhone / iOS</em>: comparirà la richiesta di autorizzazione sensori movimento.<br>
+            • Impugna lo smartphone orizzontale: inclinando il telefono a destra/sinistra o in alto/basso il gimbal si orienterà in modo proporzionale. Tocca <strong>OFF</strong> per fermarlo istantaneamente.
+          </p>
+        </div>
+
+        <!-- Passo 3 -->
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-white/5 space-y-1">
+          <h3 class="font-bold text-cyan-400 flex items-center gap-1.5 text-sm">
+            <span>3.</span> Motion Routines & Gesti MediaPipe
+          </h3>
+          <p class="text-slate-300">
+            • <strong>Routines:</strong> crea sequenze autonome (es. rotazione panoramica continua per 4 secondi a velocità controllata).<br>
+            • <strong>Gesti Mano:</strong> attiva la fotocamera nella tab <em>Vision AI</em>.<br>
+            - Mostra il <strong class="text-cyan-300">Palmo Aperto</strong> per fermare i motori.<br>
+            - Mostra il <strong class="text-emerald-300">Pugno Chiuso</strong> per ricentrare a 2048.<br>
+            - Alza solo l'<strong class="text-amber-300">Indice</strong> per sterzare a destra o sinistra.
+          </p>
+        </div>
+
+        <!-- Passo 4 -->
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-white/5 space-y-1">
+          <h3 class="font-bold text-cyan-400 flex items-center gap-1.5 text-sm">
+            <span>4.</span> Assistente Vocale J.A.R.V.I.S.
+          </h3>
+          <p class="text-slate-300">
+            • Tocca <strong>"ATTIVA"</strong> nel riquadro J.A.R.V.I.S. e concedi il permesso del microfono.<br>
+            • Pronuncia a voce comandi chiari in italiano: <em>"Su"</em>, <em>"Giù"</em>, <em>"Destra"</em>, <em>"Sinistra"</em>, <em>"Centro"</em> o <em>"Stop"</em>.<br>
+            • Per arrestare la dettatura tocca nuovamente il pulsante disattivando l'ascolto continuo.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Footer Modale -->
+      <div class="p-3 border-t border-white/10 bg-slate-950/50 flex justify-end">
+        <button id="btn-guide-ok" class="px-5 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs uppercase tracking-wider">
+          Ho Capito
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODALE CREA ROUTINE -->
+  <div id="modal-routine" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel-glow bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-4 space-y-3">
+      <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Crea Sequenza di Movimento</h3>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-[10px] text-slate-400">Nome Routine</label>
+          <input type="text" id="routine-name" value="Pan 180 Veloce" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-mono">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] text-slate-400">Asse</label>
+            <select id="routine-axis" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
+              <option value="2">Pan (Orizzontale)</option>
+              <option value="1">Tilt (Verticale)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400">Delta Velocità</label>
+            <input type="number" id="routine-speed" value="900" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] text-slate-400">Durata (ms)</label>
+          <input type="number" id="routine-duration" value="2500" step="200" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button id="btn-save-routine" class="flex-1 bg-cyan-500 text-slate-950 font-bold py-2 rounded-xl text-xs">Salva</button>
+        <button id="btn-close-routine" class="bg-slate-800 text-slate-300 font-medium px-4 py-2 rounded-xl text-xs">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 6. CODICE LOGICA APPLICATIVA (JAVASCRIPT ES6)                             -->
+  <!-- ========================================================================= -->
+  <script>
+    // =========================================================================
+    // COSTANTI & PROTOCOLLO SMOOTH 4
+    // =========================================================================
+    const GIMBAL_SERVICE_UUID = 'd44bc439-abfd-45a2-b575-925416129600';
+    const GIMBAL_CHAR_UUID    = 'd44bc439-abfd-45a2-b575-925416129600';
+    const GIMBAL_BATT_UUID    = 'd44bc439-abfd-45a2-b575-925416129601';
+
+    const VAL_NEUTRAL = 2048;
+    const LOOP_INTERVAL_MS = 55;
+
+    // STATO APPLICAZIONE
+    const app = {
+      bleDevice: null,
+      bleServer: null,
+      writeChar: null,
+      seqCounter: 0x32,
+      connected: false,
+      connecting: false,
+
+      axisX: VAL_NEUTRAL,
+      axisY: VAL_NEUTRAL,
+      targetX: VAL_NEUTRAL,
+      targetY: VAL_NEUTRAL,
+
+      speedDelta: 1400,
+      glideEnabled: true,
+      invX: false,
+      invY: false,
+
+      rawBattery: 100,
+
+      // Modalità
+      gyroActive: false,
+      handsActive: false,
+      faceActive: false,
+      audioActive: false,
+      voiceActive: false,
+      routineRunning: false,
+
+      // Giroscopio
+      gyroBaseBeta: null,
+      gyroBaseGamma: null,
+
+      // Cache Presets
+      presets: [
+        { name: 'Lento', emoji: '🐢', speed: 800 },
+        { name: 'Cine',  emoji: '🎬', speed: 1400 },
+        { name: 'Turbo', emoji: '⚡', speed: 2047 }
+      ],
+      positions: [
+        { name: 'Pos. Centro', x: 2048, y: 2048 },
+        { name: 'Pos. Lavagna', x: 2800, y: 1800 }
+      ],
+      routines: [
+        { name: 'Panoramica Stanza', axis: 2, speed: 750, duration: 3200 },
+        { name: 'Tilt Esplorativo', axis: 1, speed: 650, duration: 2000 }
+      ]
+    };
+
+    // =========================================================================
+    // CRC16 XMODEM & PACKET BUILDER PER ZHIYUN
+    // =========================================================================
+    function computeCrc16XModem(payload) {
+      let crc = 0x0000;
+      for (let i = 0; i < payload.length; i++) {
+        crc ^= (payload[i] << 8);
+        for (let b = 0; b < 8; b++) {
+          if (crc & 0x8000) {
+            crc = ((crc << 1) ^ 0x1021) & 0xffff;
+          } else {
+            crc = (crc << 1) & 0xffff;
+          }
+        }
+      }
+      return crc;
+    }
+
+    function buildPacket(axisId, value16) {
+      const buffer = new ArrayBuffer(14);
+      const view = new DataView(buffer);
+      const uint8 = new Uint8Array(buffer);
+
+      uint8[0] = 0x24;
+      uint8[1] = 0x3c;
+      view.setUint16(2, 8, true); // Payload len = 8 Little Endian
+
+      uint8[4] = 0x18;
+      uint8[5] = 0x12;
+      uint8[6] = app.seqCounter & 0xff;
+      app.seqCounter = (app.seqCounter + 1) & 0xff;
+
+      uint8[7] = 0x01;
+      uint8[8] = axisId & 0xff; // 1 = Tilt, 2 = Pan
+      uint8[9] = 0x10;
+      view.setUint16(10, Math.max(0, Math.min(4095, value16)), true);
+
+      const crc = computeCrc16XModem(uint8.subarray(4, 12));
+      view.setUint16(12, crc, true);
+
+      return uint8;
+    }
+
+    async function sendPacket(uint8Packet) {
+      if (!app.connected || !app.writeChar) return;
+      try {
+        if (app.writeChar.writeValueWithoutResponse) {
+          await app.writeChar.writeValueWithoutResponse(uint8Packet);
+        } else {
+          await app.writeChar.writeValue(uint8Packet);
+        }
+        logHexTraffic(uint8Packet);
+      } catch (e) {
+        console.warn("Write error:", e);
+      }
+    }
+
+    // =========================================================================
+    // TICKER LOOP CONTINUO A 55ms
+    // =========================================================================
+    let tickerTimer = null;
+
+    function startTickerLoop() {
+      if (tickerTimer) clearInterval(tickerTimer);
+      tickerTimer = setInterval(async () => {
+        if (!app.connected) return;
+
+        // Cinematic Glide / Interpolazione
+        const lerp = app.glideEnabled ? 0.22 : 0.55;
+        app.axisX += (app.targetX - app.axisX) * lerp;
+        app.axisY += (app.targetY - app.axisY) * lerp;
+
+        const curX = Math.round(app.axisX);
+        const curY = Math.round(app.axisY);
+
+        document.getElementById('telemetry-pan').textContent = curX;
+        document.getElementById('telemetry-tilt').textContent = curY;
+
+        if (curX !== VAL_NEUTRAL || curY !== VAL_NEUTRAL || app._needsFlush) {
+          app._needsFlush = !(curX === VAL_NEUTRAL && curY === VAL_NEUTRAL);
+          // Asse Pan (0x02) & Tilt (0x01)
+          await sendPacket(buildPacket(0x02, curX));
+          await sendPacket(buildPacket(0x01, curY));
+        }
+      }, LOOP_INTERVAL_MS);
+    }
+
+    // =========================================================================
+    //BLUETOOTH CONNECTION MANAGEMENT
+    // =========================================================================
+    const btnConnect = document.getElementById('btn-connect-ble');
+    const btnDisconnect = document.getElementById('btn-disconnect-ble');
+    const btnConnectText = document.getElementById('btn-connect-text');
+    const bleSpinIcon = document.getElementById('ble-spin-icon');
+    const statusLed = document.getElementById('status-led');
+    const bleBadge = document.getElementById('ble-state-badge');
+    const subDeviceName = document.getElementById('sub-device-name');
+
+    btnConnect.addEventListener('click', connectGimbal);
+    btnDisconnect.addEventListener('click', disconnectGimbal);
+
+    async function connectGimbal() {
+      try {
+        app.connecting = true;
+        bleSpinIcon.style.display = 'inline-block';
+        btnConnectText.textContent = 'RICERCA IN CORSO...';
+        statusLed.className = 'w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_10px_#f59e0b] animate-ping';
+        bleBadge.className = 'text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-500/30 text-amber-400 font-bold';
+        bleBadge.textContent = 'SCANNING';
+
+        appendLog("Ricerca dispositivo Zhiyun Smooth 4...");
+        app.bleDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            GIMBAL_SERVICE_UUID,
+            '0000fee9-0000-1000-8000-00805f9b34fb',
+            'battery_service'
+          ]
+        });
+
+        app.bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+        appendLog(`Connessione GATT a ${app.bleDevice.name || 'Dispositivo'}...`);
+
+        app.bleServer = await app.bleDevice.gatt.connect();
+
+        let service;
+        try {
+          service = await app.bleServer.getPrimaryService(GIMBAL_SERVICE_UUID);
+        } catch (_) {
+          const svcs = await app.bleServer.getPrimaryServices();
+          service = svcs[0];
+        }
+
+        if (!service) throw new Error("Servizio BLE non accessibile.");
+
+        try {
+          app.writeChar = await service.getCharacteristic(GIMBAL_CHAR_UUID);
+        } catch (_) {
+          const chars = await service.getCharacteristics();
+          app.writeChar = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
+        }
+
+        if (!app.writeChar) throw new Error("Caratteristica di scrittura 0x0012 non trovata.");
+
+        // Notifiche Batteria
+        try {
+          const battChar = await service.getCharacteristic(GIMBAL_BATT_UUID);
+          await battChar.startNotifications();
+          battChar.addEventListener('characteristicvaluechanged', (e) => {
+            const raw = e.target.value.getUint8(e.target.value.byteLength - 1);
+            setBatteryState(raw);
+          });
+        } catch (_) {
+          setBatteryState(96);
+        }
+
+        app.connected = true;
+        app.connecting = false;
+        bleSpinIcon.style.display = 'none';
+        btnConnectText.textContent = 'CONNESSO';
+        btnConnect.classList.replace('from-cyan-500', 'from-emerald-500');
+        btnConnect.classList.replace('to-blue-600', 'to-teal-600');
+        btnDisconnect.disabled = false;
+
+        statusLed.className = 'w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]';
+        bleBadge.className = 'text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 font-bold';
+        bleBadge.textContent = 'ONLINE';
+        subDeviceName.textContent = app.bleDevice.name || 'Smooth 4 Link';
+
+        startTickerLoop();
+        requestScreenWakeLock();
+        vibrate([40, 80, 40]);
+        appendLog("✅ Gimbal Connesso e Pronto.");
+      } catch (err) {
+        appendLog(`❌ Errore BLE: ${err.message}`);
+        onDisconnected();
+      }
+    }
+
+    function onDisconnected() {
+      app.connected = false;
+      app.connecting = false;
+      if (tickerTimer) clearInterval(tickerTimer);
+
+      bleSpinIcon.style.display = 'none';
+      btnConnectText.textContent = '⚡ CONNETTI SMOOTH 4';
+      btnConnect.classList.replace('from-emerald-500', 'from-cyan-500');
+      btnConnect.classList.replace('to-teal-600', 'to-blue-600');
+      btnDisconnect.disabled = true;
+
+      statusLed.className = 'w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse';
+      bleBadge.className = 'text-[9px] font-mono px-1.5 py-0.2 rounded bg-red-950/80 border border-red-500/30 text-red-400 font-bold';
+      bleBadge.textContent = 'DISCONNESSO';
+      subDeviceName.textContent = 'BLE Inattivo';
+
+      document.getElementById('batt-val').textContent = '--%';
+      document.getElementById('batt-alert-banner').classList.add('hidden');
+      appendLog("Link Bluetooth Disconnesso.");
+    }
+
+    function disconnectGimbal() {
+      if (app.bleDevice && app.bleDevice.gatt.connected) {
+        app.bleDevice.gatt.disconnect();
+      }
+      onDisconnected();
+    }
+
+    // =========================================================================
+    // CALIBRATED BATTERY & WAKE LOCK API
+    // =========================================================================
+    function setBatteryState(rawVal) {
+      let normalized = rawVal;
+      if (rawVal > 100) {
+        normalized = Math.min(100, Math.round((rawVal / 255) * 100));
+      }
+      app.rawBattery = normalized;
+      document.getElementById('batt-val').textContent = `${normalized}%`;
+
+      const alertBanner = document.getElementById('batt-alert-banner');
+      const battSvg = document.getElementById('batt-svg');
+
+      if (normalized < 20) {
+        alertBanner.classList.remove('hidden');
+        battSvg.className = 'w-3.5 h-3.5 text-rose-500 animate-pulse';
+      } else {
+        alertBanner.classList.add('hidden');
+        battSvg.className = 'w-3.5 h-3.5 text-emerald-400';
+      }
+    }
+
+    async function requestScreenWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          await navigator.wakeLock.request('screen');
+        }
+      } catch (_) {}
+    }
+
+    // =========================================================================
+    // KILL SWITCH For emergency Red neon
+    // =========================================================================
+    const btnKill = document.getElementById('btn-emergency-stop');
+
+    async function triggerEmergency() {
+      app.targetX = VAL_NEUTRAL;
+      app.targetY = VAL_NEUTRAL;
+      app.axisX = VAL_NEUTRAL;
+      app.axisY = VAL_NEUTRAL;
+      app.routineRunning = false;
+      updateKnobPosition(0, 0);
+
+      if (app.connected && app.writeChar) {
+        await sendPacket(buildPacket(0x01, VAL_NEUTRAL));
+        await sendPacket(buildPacket(0x02, VAL_NEUTRAL));
+      }
+      vibrate(200);
+      appendLog("🛑 KILL SWITCH ATTIVATO: Motori fermati a 2048.");
+    }
+
+    btnKill.addEventListener('click', triggerEmergency);
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        triggerEmergency();
+      }
+    });
+
+    // =========================================================================
+    // ERGONOMIC THUMB JOYSTICK
+    // =========================================================================
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    let isStickActive = false;
+    let joyBounds = null;
+
+    function updateKnobPosition(dx, dy) {
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+
+    function processJoystickTouch(clientX, clientY) {
+      if (!joyBounds) joyBounds = joyZone.getBoundingClientRect();
+      const originX = joyBounds.left + joyBounds.width / 2;
+      const originY = joyBounds.top + joyBounds.height / 2;
+      const maxRadius = joyBounds.width / 2 - 28;
+
+      let dx = clientX - originX;
+      let dy = clientY - originY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > maxRadius) {
+        const angle = Math.atan2(dy, dx);
+        dx = Math.cos(angle) * maxRadius;
+        dy = Math.sin(angle) * maxRadius;
+      }
+
+      updateKnobPosition(dx, dy);
+
+      const normX = dx / maxRadius;
+      const normY = -dy / maxRadius; 
+
+      const signX = app.invX ? -normX : normX;
+      const signY = app.invY ? -normY : normY;
+
+      app.targetX = Math.round(VAL_NEUTRAL + (signX * app.speedDelta));
+      app.targetY = Math.round(VAL_NEUTRAL + (signY * app.speedDelta));
+    }
+
+    joyZone.addEventListener('pointerdown', (e) => {
+      isStickActive = true;
+      joyBounds = joyZone.getBoundingClientRect();
+      joyZone.setPointerCapture(e.pointerId);
+      processJoystickTouch(e.clientX, e.clientY);
+      vibrate(20);
+    });
+
+    joyZone.addEventListener('pointermove', (e) => {
+      if (!isStickActive) return;
+      processJoystickTouch(e.clientX, e.clientY);
+    });
+
+    const releaseStick = () => {
+      if (!isStickActive) return;
+      isStickActive = false;
+      joyBounds = null;
+      app.targetX = VAL_NEUTRAL;
+      app.targetY = VAL_NEUTRAL;
+      updateKnobPosition(0, 0);
+    };
+
+    joyZone.addEventListener('pointerup', releaseStick);
+    joyZone.addEventListener('pointercancel', releaseStick);
+
+    document.getElementById('btn-recenter').addEventListener('click', () => {
+      triggerEmergency();
+    });
+
+    // =========================================================================
+    // SPEED PRESETS, POSITIONS & ROUTINES
+    // =========================================================================
+    function renderPresets() {
+      const container = document.getElementById('speed-presets-container');
+      container.innerHTML = '';
+      app.presets.forEach(p => {
+        const btn = document.createElement('button');
+        const active = app.speedDelta === p.speed;
+        btn.className = `py-2 rounded-xl text-xs font-mono flex flex-col items-center justify-center border transition ${
+          active ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-950/80 border-slate-800 text-slate-300'
+        }`;
+        btn.innerHTML = `<span class="text-base">${p.emoji}</span><span>${p.name}</span><span class="text-[9px] text-slate-500">±${p.speed}</span>`;
+        btn.onclick = () => {
+          app.speedDelta = p.speed;
+          document.getElementById('telemetry-speed').textContent = `±${p.speed}`;
+          renderPresets();
+          vibrate(20);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderQuickPositions() {
+      const container = document.getElementById('quick-positions-grid');
+      container.innerHTML = '';
+      app.positions.forEach(pos => {
+        const btn = document.createElement('button');
+        btn.className = 'p-2 bg-slate-950/80 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-left active:scale-95 transition';
+        btn.innerHTML = `
+          <div class="text-[11px] font-bold text-cyan-400 truncate">${pos.name}</div>
+          <div class="text-[9px] font-mono text-slate-500">X:${pos.x} | Y:${pos.y}</div>
+        `;
+        btn.onclick = () => {
+          app.targetX = pos.x;
+          app.targetY = pos.y;
+          setTimeout(() => {
+            app.targetX = VAL_NEUTRAL;
+            app.targetY = VAL_NEUTRAL;
+          }, 1200);
+          vibrate(30);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    document.getElementById('btn-add-quick-pos').onclick = () => {
+      const name = prompt("Nome posizione corrente:", "Pos #" + (app.positions.length + 1));
+      if (name) {
+        app.positions.push({ name, x: Math.round(app.axisX), y: Math.round(app.axisY) });
+        renderQuickPositions();
+        vibrate(30);
+      }
+    };
+
+    function renderRoutines() {
+      const list = document.getElementById('routines-list');
+      list.innerHTML = '';
+      app.routines.forEach((r, idx) => {
+        const card = document.createElement('div');
+        card.className = 'p-2.5 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="text-xs font-bold text-slate-200">${r.name}</div>
+            <div class="text-[9px] font-mono text-slate-500">Asse 0${r.axis} • Delta ±${r.speed} • ${(r.duration/1000).toFixed(1)}s</div>
+          </div>
+          <button class="btn-play-routine px-3 py-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-lg text-xs font-mono font-bold active:scale-95 transition" data-idx="${idx}">
+            ▶ Avvia
+          </button>
+        `;
+        list.appendChild(card);
+      });
+
+      document.querySelectorAll('.btn-play-routine').forEach(b => {
+        b.onclick = (e) => executeRoutine(app.routines[parseInt(e.currentTarget.dataset.idx, 10)]);
+      });
+    }
+
+    async function executeRoutine(routine) {
+      if (app.routineRunning) return;
+      app.routineRunning = true;
+      appendLog(`🎬 Esecuzione routine: "${routine.name}"`);
+      vibrate(40);
+
+      const targetVal = VAL_NEUTRAL + routine.speed;
+      if (routine.axis === 2) app.targetX = targetVal;
+      else app.targetY = targetVal;
+
+      await new Promise(r => setTimeout(r, routine.duration));
+
+      app.targetX = VAL_NEUTRAL;
+      app.targetY = VAL_NEUTRAL;
+      app.routineRunning = false;
+      appendLog(`✅ Routine "${routine.name}" terminata.`);
+      vibrate([30, 40]);
+    }
+
+    // Modale Nuova Routine
+    const modalRoutine = document.getElementById('modal-routine');
+    document.getElementById('btn-new-routine').onclick = () => modalRoutine.classList.remove('hidden');
+    document.getElementById('btn-close-routine').onclick = () => modalRoutine.classList.add('hidden');
+    document.getElementById('btn-save-routine').onclick = () => {
+      const name = document.getElementById('routine-name').value;
+      const axis = parseInt(document.getElementById('routine-axis').value, 10);
+      const speed = parseInt(document.getElementById('routine-speed').value, 10);
+      const duration = parseInt(document.getElementById('routine-duration').value, 10);
+      app.routines.push({ name, axis, speed, duration });
+      renderRoutines();
+      modalRoutine.classList.add('hidden');
+    };
+
+    // =========================================================================
+    // GYROSCOPE / AIR MOUSE (DEVICE ORIENTATION)
+    // =========================================================================
+    const btnToggleGyro = document.getElementById('btn-toggle-gyro');
+
+    btnToggleGyro.addEventListener('click', async () => {
+      if (!app.gyroActive) {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const perm = await DeviceOrientationEvent.requestPermission();
+          if (perm !== 'granted') {
+            alert("Permesso giroscopio negato su questo dispositivo.");
+            return;
+          }
+        }
+        app.gyroActive = true;
+        app.gyroBaseBeta = null;
+        app.gyroBaseGamma = null;
+        window.addEventListener('deviceorientation', handleOrientation);
+        btnToggleGyro.textContent = 'ON';
+        btnToggleGyro.className = 'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-cyan-500 bg-cyan-500/20 text-cyan-300';
+        vibrate(30);
+      } else {
+        app.gyroActive = false;
+        window.removeEventListener('deviceorientation', handleOrientation);
+        btnToggleGyro.textContent = 'OFF';
+        btnToggleGyro.className = 'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-slate-700 bg-slate-900 text-slate-300';
+        app.targetX = VAL_NEUTRAL;
+        app.targetY = VAL_NEUTRAL;
+      }
+    });
+
+    function handleOrientation(e) {
+      if (!app.gyroActive || isStickActive) return;
+      if (app.gyroBaseBeta === null) {
+        app.gyroBaseBeta = e.beta;
+        app.gyroBaseGamma = e.gamma;
+        return;
+      }
+
+      const deltaY = e.beta - app.gyroBaseBeta;
+      const deltaX = e.gamma - app.gyroBaseGamma;
+
+      const deadzone = 2.5;
+      let sx = Math.abs(deltaX) > deadzone ? deltaX * 45 : 0;
+      let sy = Math.abs(deltaY) > deadzone ? deltaY * 45 : 0;
+
+      sx = Math.max(-1800, Math.min(1800, sx));
+      sy = Math.max(-1800, Math.min(1800, sy));
+
+      app.targetX = Math.round(VAL_NEUTRAL + (app.invX ? -sx : sx));
+      app.targetY = Math.round(VAL_NEUTRAL + (app.invY ? -sy : sy));
+    }
+
+    // =========================================================================
+    // MEDIAPIPE HAND GESTURES & FACE MIRRORING
+    // =========================================================================
+    const aiVideo = document.getElementById('ai-video');
+    const aiCanvas = document.getElementById('ai-canvas');
+    const aiCtx = aiCanvas.getContext('2d');
+    const aiPlaceholder = document.getElementById('ai-placeholder');
+    const visionStatusChip = document.getElementById('vision-status-chip');
+    const btnToggleHands = document.getElementById('btn-toggle-hands');
+    const btnToggleFace = document.getElementById('btn-toggle-face');
+
+    let cameraStream = null;
+    let handsModel = null;
+    let faceModel = null;
+
+    async function initCamera() {
+      if (cameraStream) return;
+      aiPlaceholder.style.display = 'none';
+      cameraStream = new Camera(aiVideo, {
+        onFrame: async () => {
+          if (app.handsActive && handsModel) await handsModel.send({ image: aiVideo });
+          else if (app.faceActive && faceModel) await faceModel.send({ image: aiVideo });
+        },
+        width: 320,
+        height: 240
+      });
+      await cameraStream.start();
+    }
+
+    btnToggleHands.onclick = async () => {
+      if (!app.handsActive) {
+        app.faceActive = false;
+        await initCamera();
+        if (!handsModel) {
+          handsModel = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          });
+          handsModel.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.65 });
+          handsModel.onResults(onHands);
+        }
+        app.handsActive = true;
+        visionStatusChip.textContent = 'HANDS RUNNING';
+        visionStatusChip.className = 'text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500 text-cyan-300';
+      } else {
+        app.handsActive = false;
+        visionStatusChip.textContent = 'STANDBY';
+        visionStatusChip.className = 'text-[9px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400';
+        triggerEmergency();
+      }
+    };
+
+    function onHands(results) {
+      aiCanvas.width = aiVideo.videoWidth;
+      aiCanvas.height = aiVideo.videoHeight;
+      aiCtx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+
+      if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return;
+      const lm = results.multiHandLandmarks[0];
+
+      // Disegna landmark
+      aiCtx.fillStyle = '#00f2fe';
+      for (const pt of lm) {
+        aiCtx.beginPath();
+        aiCtx.arc(pt.x * aiCanvas.width, pt.y * aiCanvas.height, 3, 0, 2 * Math.PI);
+        aiCtx.fill();
+      }
+
+      const isIndexUp = lm[8].y < lm[6].y;
+      const isMiddleUp = lm[12].y < lm[10].y;
+      const isRingUp = lm[16].y < lm[14].y;
+      const isPinkyUp = lm[20].y < lm[18].y;
+
+      const distThumbIndex = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
+
+      // OK Sign -> Routine #1
+      if (distThumbIndex < 0.05 && isMiddleUp && isPinkyUp) {
+        if (!app.routineRunning) executeRoutine(app.routines[0]);
+        return;
+      }
+      // Palmo Aperto -> STOP 2048
+      if (isIndexUp && isMiddleUp && isRingUp && isPinkyUp) {
+        app.targetX = VAL_NEUTRAL;
+        app.targetY = VAL_NEUTRAL;
+        return;
+      }
+      // Pugno -> Recenter
+      if (!isIndexUp && !isMiddleUp && !isRingUp && !isPinkyUp) {
+        app.targetX = VAL_NEUTRAL;
+        app.targetY = VAL_NEUTRAL;
+        return;
+      }
+      // Solo Indice -> Guida Pan
+      if (isIndexUp && !isMiddleUp && !isRingUp) {
+        const offset = lm[0].x - 0.5;
+        app.targetX = VAL_NEUTRAL + Math.round(offset * 2200);
+      }
+    }
+
+    // Face Mirroring
+    btnToggleFace.onclick = async () => {
+      if (!app.faceActive) {
+        app.handsActive = false;
+        await initCamera();
+        if (!faceModel) {
+          faceModel = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+          });
+          faceModel.setOptions({ minDetectionConfidence: 0.6 });
+          faceModel.onResults(onFace);
+        }
+        app.faceActive = true;
+        visionStatusChip.textContent = 'FACE MIRROR';
+        visionStatusChip.className = 'text-[9px] font-mono px-2 py-0.5 rounded bg-purple-950 border border-purple-500 text-purple-300';
+      } else {
+        app.faceActive = false;
+        visionStatusChip.textContent = 'STANDBY';
+        visionStatusChip.className = 'text-[9px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400';
+        triggerEmergency();
+      }
+    };
+
+    function onFace(res) {
+      aiCanvas.width = aiVideo.videoWidth;
+      aiCanvas.height = aiVideo.videoHeight;
+      aiCtx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+
+      if (!res.detections || res.detections.length === 0) {
+        app.targetX = VAL_NEUTRAL;
+        app.targetY = VAL_NEUTRAL;
+        return;
+      }
+
+      const box = res.detections[0].boundingBox;
+      const cx = box.xCenter;
+      const cy = box.yCenter;
+
+      aiCtx.strokeStyle = '#a855f7';
+      aiCtx.lineWidth = 2;
+      aiCtx.strokeRect((cx - box.width / 2) * aiCanvas.width, (cy - box.height / 2) * aiCanvas.height, box.width * aiCanvas.width, box.height * aiCanvas.height);
+
+      const dx = cx - 0.5;
+      const dy = cy - 0.5;
+
+      const deadzone = 0.04;
+      const sx = Math.abs(dx) > deadzone ? dx * 2300 : 0;
+      const sy = Math.abs(dy) > deadzone ? dy * 2100 : 0;
+
+      app.targetX = Math.round(VAL_NEUTRAL + sx);
+      app.targetY = Math.round(VAL_NEUTRAL - sy);
+    }
+
+    // =========================================================================
+    // AUDIO TRACKING (WEB AUDIO API)
+    // =========================================================================
+    const btnToggleAudio = document.getElementById('btn-toggle-audio');
+    const audioVuBar = document.getElementById('audio-vu-bar');
+    let audioContext = null;
+    let audioAnalyser = null;
+    let audioStream = null;
+
+    btnToggleAudio.onclick = async () => {
+      if (!app.audioActive) {
+        try {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioContext.createMediaStreamSource(audioStream);
+          audioAnalyser = audioContext.createAnalyser();
+          audioAnalyser.fftSize = 256;
+          src.connect(audioAnalyser);
+          app.audioActive = true;
+          btnToggleAudio.textContent = 'ON';
+          btnToggleAudio.className = 'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-cyan-500 bg-cyan-500/20 text-cyan-300';
+          processAudio();
+        } catch (e) {
+          alert("Accesso microfono non consentito: " + e.message);
+        }
+      } else {
+        app.audioActive = false;
+        if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+        btnToggleAudio.textContent = 'OFF';
+        btnToggleAudio.className = 'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-slate-700 bg-slate-900 text-slate-300';
+        audioVuBar.style.width = '0%';
+      }
+    };
+
+    function processAudio() {
+      if (!app.audioActive) return;
+      const data = new Uint8Array(audioAnalyser.frequencyBinCount);
+      audioAnalyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      const avg = sum / data.length;
+      const pct = Math.min(100, Math.round((avg / 128) * 100));
+      audioVuBar.style.width = `${pct}%`;
+
+      if (pct > 65 && !app.routineRunning) {
+        app.targetX = VAL_NEUTRAL + 700;
+        setTimeout(() => app.targetX = VAL_NEUTRAL, 350);
+      }
+      requestAnimationFrame(processAudio);
+    }
+
+    // =========================================================================
+    // Voice commands J.A.R.V.I.S. (WEB SPEECH API)
+    // =========================================================================
+    const btnJarvis = document.getElementById('btn-toggle-jarvis');
+    const jarvisTranscript = document.getElementById('jarvis-transcript');
+    let speechRecognizer = null;
+
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      speechRecognizer = new Speech();
+      speechRecognizer.lang = 'it-IT';
+      speechRecognizer.continuous = true;
+      speechRecognizer.interimResults = false;
+
+      speechRecognizer.onresult = (e) => {
+        const text = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
+        jarvisTranscript.textContent = `"${text}"`;
+        parseJarvisCommand(text);
+      };
+    }
+
+    btnJarvis.onclick = () => {
+      if (!speechRecognizer) {
+        alert("Web Speech API non supportata da questo browser.");
+        return;
+      }
+      if (!app.voiceActive) {
+        speechRecognizer.start();
+        app.voiceActive = true;
+        btnJarvis.textContent = 'SPEGNI';
+        btnJarvis.className = 'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-rose-500 bg-rose-950/60 text-rose-300';
+      } else {
+        speechRecognizer.stop();
+        app.voiceActive = false;
+        btnJarvis.textContent = 'ATTIVA';
+        btnJarvis.className = 'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300';
+      }
+    };
+
+    function parseJarvisCommand(text) {
+      appendLog(`🗣️ Jarvis: "${text}"`);
+      vibrate(30);
+
+      if (/stop|ferma|alt/i.test(text)) triggerEmergency();
+      else if (/centro|centra|reset/i.test(text)) { app.targetX = VAL_NEUTRAL; app.targetY = VAL_NEUTRAL; }
+      else if (/destra/i.test(text)) { app.targetX = VAL_NEUTRAL + app.speedDelta; setTimeout(() => app.targetX = VAL_NEUTRAL, 1000); }
+      else if (/sinistra/i.test(text)) { app.targetX = VAL_NEUTRAL - app.speedDelta; setTimeout(() => app.targetX = VAL_NEUTRAL, 1000); }
+      else if (/su|alto/i.test(text)) { app.targetY = VAL_NEUTRAL + app.speedDelta; setTimeout(() => app.targetY = VAL_NEUTRAL, 900); }
+      else if (/giù|basso/i.test(text)) { app.targetY = VAL_NEUTRAL - app.speedDelta; setTimeout(() => app.targetY = VAL_NEUTRAL, 900); }
+      else if (/lento|piano/i.test(text)) { app.speedDelta = 800; renderPresets(); }
+      else if (/turbo|veloce/i.test(text)) { app.speedDelta = 2047; renderPresets(); }
+    }
+
+    // =========================================================================
+    // Guide and tutorial
+    // =========================================================================
+    const modalGuide = document.getElementById('modal-guide');
+    const btnOpenGuide = document.getElementById('btn-open-guide');
+    const btnCloseGuide = document.getElementById('btn-close-guide');
+    const btnGuideOk = document.getElementById('btn-guide-ok');
+
+    btnOpenGuide.onclick = () => modalGuide.classList.remove('hidden');
+    btnCloseGuide.onclick = () => modalGuide.classList.add('hidden');
+    btnGuideOk.onclick = () => modalGuide.classList.add('hidden');
+
+    // =========================================================================
+    // Config, Profile Login
+    // =========================================================================
+    document.querySelectorAll('.profile-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        const p = e.currentTarget.dataset.profile;
+        if (p === 'desk') { app.speedDelta = 800; app.glideEnabled = true; }
+        else if (p === 'walk') { app.speedDelta = 1400; app.glideEnabled = false; }
+        else if (p === 'cine') { app.speedDelta = 1100; app.glideEnabled = true; }
+        
+        document.getElementById('chk-glide').checked = app.glideEnabled;
+        document.getElementById('telemetry-glide').textContent = app.glideEnabled ? 'ON' : 'OFF';
+        document.getElementById('telemetry-speed').textContent = `±${app.speedDelta}`;
+        renderPresets();
+        appendLog(`Profilo selezionato: ${p.toUpperCase()}`);
+        vibrate(30);
+      };
+    });
+
+    document.getElementById('chk-glide').onchange = (e) => {
+      app.glideEnabled = e.target.checked;
+      document.getElementById('telemetry-glide').textContent = app.glideEnabled ? 'ON' : 'OFF';
+    };
+    document.getElementById('chk-inv-x').onchange = (e) => app.invX = e.target.checked;
+    document.getElementById('chk-inv-y').onchange = (e) => app.invY = e.target.checked;
+
+    const hexConsole = document.getElementById('hex-console');
+    document.getElementById('btn-clear-log').onclick = () => hexConsole.innerHTML = '';
+
+    function appendLog(str) {
+      const line = document.createElement('div');
+      line.className = 'text-slate-300';
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${str}`;
+      hexConsole.appendChild(line);
+      hexConsole.scrollTop = hexConsole.scrollHeight;
+    }
+
+    function logHexTraffic(uint8) {
+      const hexStr = Array.from(uint8).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      const line = document.createElement('div');
+      line.textContent = `TX > ${hexStr}`;
+      hexConsole.appendChild(line);
+      if (hexConsole.children.length > 40) hexConsole.removeChild(hexConsole.firstChild);
+      hexConsole.scrollTop = hexConsole.scrollHeight;
+    }
+
+    function vibrate(pattern) {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
+    // =========================================================================
+    // GESTIONE TABS (SCAMBIO CONTENUTI SENZA TRONCARE LO SCROLL)
+    // =========================================================================
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.nav-tab').forEach(t => {
+          t.className = 'nav-tab py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1';
+        });
+
+        const target = tab.dataset.target;
+        document.getElementById(target).classList.remove('hidden');
+        tab.className = 'nav-tab active-tab py-2 px-1 rounded-lg transition-all flex items-center justify-center gap-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+        vibrate(15);
+      };
+    });
+
+    // Avvio iniziale
+    window.addEventListener('DOMContentLoaded', () => {
+      renderPresets();
+      renderQuickPositions();
+      renderRoutines();
+      appendLog("Sistema inizializzato. Pronto per connessione BLE.");
+    });
+  </script>
+</body>
+</html>
