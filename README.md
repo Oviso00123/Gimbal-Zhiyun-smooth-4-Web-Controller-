@@ -1,12 +1,12 @@
-🎥 Zhiyun Smooth 4 Web BLE Controller
+#🎥 Zhiyun Smooth 4 Web BLE Controller
 A complete, modern Web App to remotely control the Zhiyun Smooth 4 gimbal via Bluetooth (Web BLE API).
 
 Includes Gesture Control, Motion Routines, Air Mouse, Voice Commands, and Motion Tracking directly from any browser!
 
-🚀 LIVE DEMO / PROVALO SUBITO
+#🚀 LIVE DEMO / PROVALO SUBITO
 Non serve installare nulla! Se vuoi provare l'applicazione subito dal tuo telefono o PC, apri il link qui sotto:
 
-👉 https://superlative-pavlova-45e320.netlify.app
+You Want to test on your Gimbal👉 https://superlative-pavlova-45e320.netlify.app
 
 📑 Technical Documentation / Documentazione Tecnica
 Technical notes for developers and makers who want to understand, test, or extend the Bluetooth protocol for the Zhiyun Smooth 4.
@@ -139,4 +139,4 @@ Submit a GitHub Issue or Pull Request with your findings, firmware version, and 
 📚 References & Credit
 Karim Jedda: Controlling a Zhiyun Smooth 4 gimbal with Raspberry Pi (Medium Guide)
 
-Peter Maguire: Zhiyun Weebill-S BLE Protocol Analysis & Bleebil Repo (Blog | GitHub)
+Peter Maguire: Zhiyun Weebill-S BLE Protocol Analysis & Bleebil Repo (Blog | GitHub) Thank you So mucccc
