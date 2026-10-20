@@ -1,0 +1,148 @@
+Here is the **complete English translation** of the document, maintaining the original Markdown tables, formatting, code snippets, and structure.
+
+---
+
+# Bluetooth Protocol (Zhiyun Smooth 4)
+
+Technical notes for anyone who wants to understand or improve the project. Each item indicates whether it is verified or not.
+
+**Legend:** ✅ verified · 🟡 likely · ❓ not verified
+
+---
+
+## 1. Connection
+
+| What | Value | Status |
+| --- | --- | --- |
+| **Service** | `fee9` (`0000fee9-0000-1000-8000-00805f9b34fb`) | 🟡 used by the Weebill-S, same family |
+| **Write (without response)** | `d44bc439-abfd-45a2-b575-925416129600` | ✅ |
+| **Notifications** | `d44bc439-abfd-45a2-b575-925416129601` and `...9610` | ✅ they exist |
+
+> **Note:** The gimbal accepts only one connection at a time. Close the official Zhiyun app before connecting.
+
+---
+
+## 2. Message Format
+
+```text
+24 3c | LL LL | 18 12 | SS | 01 | CC | D0 D1 D2 | RR RR
+ ^magic  ^len.    ^fixed  ^cnt. ^app  ^command^data   ^CRC (little-endian)
+
+```
+
+| Byte | Meaning | Status |
+| --- | --- | --- |
+| **`24 3c`** | Start of message (Magic Header) | ✅ |
+| **`LL LL`** | Payload length (little-endian). For the commands below it's `08 00` | ✅ |
+| **`18 12`** | Fixed value in commands | ✅ |
+| **`SS`** | Counter: +1 per message. The gimbal ignores duplicates | 🟡 |
+| **`01`** | "Message from app to gimbal" (replies use `10`) | ✅ |
+| **`CC`** | Command / axis number | ✅ |
+| **`D0 D1 D2`** | Data. For movements: `10` + 16-bit little-endian value | ✅ |
+| **`RR RR`** | CRC16 (little-endian) | ✅ |
+
+### CRC
+
+* **Algorithm:** CRC16 XMODEM (Polynomial `0x1021`, Initial value `0`, no reflection, XOR out `0`).
+* **Calculation:** Computed **only** over the payload (from `18 12` to the last data byte).
+* Verified on 5 real messages (table below).
+
+```javascript
+// JavaScript
+function crc16(bytes) {
+  let c = 0;
+  for (const b of bytes) {
+    c ^= b << 8;
+    for (let i = 0; i < 8; i++) {
+      c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF;
+    }
+  }
+  return c;
+}
+
+```
+
+```python
+# Python
+def crc16(data, crc=0):
+    for b in data:
+        crc ^= b << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+```
+
+### Real Messages
+
+Taken from Karim Jedda's technical analysis:
+
+| Message (Hex) | SS | CC | Value |
+| --- | --- | --- | --- |
+| `243c08001812730102100008d87a` | `73` | `01` | `02` (`100008` → 2048) |
+| `243c0800181274010310d40e087d` | `74` | `01` | `03` (`10d40e` → 3796) |
+| `243c080018123c0101102c01b59c` | `3c` | `01` | `01` (`102c01` → 300) |
+| `243c0800181232010110d40e9177` | `32` | `01` | `01` (`10d40e` → 3796) |
+| `243c08001812330102100008c810` | `33` | `01` | `02` (`100008` → 2048) |
+
+---
+
+## 3. Movements
+
+| Command (`CC`) | Axis | Status |
+| --- | --- | --- |
+| **`01`** | Tilt (up / down) | ✅ (used for "pan up slow") |
+| **`02`** | Pan (left / right) | 🟡 |
+| **`03`** | Roll | 🟡 |
+
+* **Value range:** `0` to `4095` ✅
+* **`2048`:** Neutral / stopped 🟡 (Inferred: `3796` and `300` are `2048` ± `1748`)
+* **`3796` and `300`:** Slow movement in two opposite directions 🟡
+
+### ⚠️ Important Movement Note
+
+The gimbal **only moves while messages keep arriving**. A single message moves the motors very little and then stops immediately.
+
+* **Continuous Loop:** Repeat the current axis state every `~70 ms`.
+* **Stopping:** To stop movement, send `2048` on all axes (sending it a few times in sequence is recommended).
+
+---
+
+## 4. Other Commands ❓
+
+Derived from the Weebill-S protocol (same protocol family). Not yet fully verified on the Smooth 4. For read requests, data bytes are set to `00 00 00`.
+
+| Command | What it does |
+| --- | --- |
+| **`04`** | Read software version |
+| **`06`** | Read battery level |
+| **`22` · `23` · `24**` | Read Tilt · Roll · Pan position |
+| **`27`** | Change mode (Data: `80 MM 00`, where `MM` = `00` PF, `01` L, `02` F, `03` POV, `04` GO) |
+| **`20`** | Button press (Data: `c0 3c 00`) |
+| **`06` · `07` · `08**` | Set absolute position Tilt · Roll · Pan (Data: `10` + 2 bytes) |
+
+---
+
+## 5. Replies and Heartbeat ❓
+
+* **Replies:** Start with `24 3e`. The payload format is `18 12 | SS | 10 | Command | Data`. Always check the CRC. Several incoming messages may arrive together or split across BLE packets.
+* **Heartbeat:** Periodic status message sent by the gimbal with payload `18 15 | SS | 00 | MODE | LOCK ...` containing the active mode.
+
+---
+
+## 6. How to Help Verify
+
+1. Open the Web App, connect your gimbal, and try the read buttons in the **Commands** panel.
+2. Copy the generated lines from the **Log** (`TX ...` and `RX ...`).
+3. Open a GitHub Issue containing your gimbal model, firmware version, and the copied log lines.
+4. For testing new commands, you can capture traffic from the official Zhiyun app (via Android Bluetooth HCI Snoop Log + Wireshark) and parse the packets using this table.
+
+---
+
+## 7. Sources
+
+* **Karim Jedda**, *Controlling a Zhiyun Smooth 4 gimbal with Raspberry Pi*: [Medium Article](https://medium.com/@karimjdda/controlling-a-zhiyun-smooth-4-gimbal-with-raspberry-pi-167ab9ca41c1)
+* **Peter Maguire**, *Zhiyun Weebill-S BLE Protocol*: [Blog Post](https://petermaguire.xyz/posts/zhiyun-weebil-s-ble-protocol/)
+* **Peter Maguire**, *bleebil repository*: [GitHub Repository](https://github.com/Peter-Maguire/bleebil)
+
+---
