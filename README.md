@@ -6,7 +6,7 @@ Includes Gesture Control, Motion Routines, Air Mouse, Voice Commands, and Motion
 🚀 LIVE DEMO / PROVALO SUBITO
 Non serve installare nulla! Se vuoi provare l'applicazione subito dal tuo telefono o PC, apri il link qui sotto:
 
-Provalo subito sul tuo gimbal 👉 open the Realese
+open the Realese for text on your Gimbal 👉 https://github.com/Oviso00123/Gimbal-Zhiyun-smooth-4-Web-Controller-/releases/tag/zhiyun-smooth-4
 
 📑 Technical Documentation / Documentazione Tecnica
 
