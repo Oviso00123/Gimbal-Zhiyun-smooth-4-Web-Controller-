@@ -1,18 +1,18 @@
-# 🎥 Zhiyun Smooth 4 Web BLE Controller    
+🎥 Zhiyun Smooth 4 Web BLE Controller
 A complete, modern Web App to remotely control the Zhiyun Smooth 4 gimbal via Bluetooth (Web BLE API).
 
 Includes Gesture Control, Motion Routines, Air Mouse, Voice Commands, and Motion Tracking directly from any browser!
 
-# 🚀 LIVE DEMO / PROVALO SUBITO
+🚀 LIVE DEMO / PROVALO SUBITO
 Non serve installare nulla! Se vuoi provare l'applicazione subito dal tuo telefono o PC, apri il link qui sotto:
 
-You Want to test on your Gimbal👉 https://zhy-controller.netlify.app
+Provalo subito sul tuo gimbal 👉 open the Realese
 
 📑 Technical Documentation / Documentazione Tecnica
+
 Technical notes for developers and makers who want to understand, test, or extend the Bluetooth protocol for the Zhiyun Smooth 4.
 
 Legenda:
-
 ✅ Verified / Verificato
 
 🟡 Likely / Probabile
@@ -20,17 +20,11 @@ Legenda:
 ❓ Not Verified / Non verificato
 
 1. 📡 Bluetooth Connection
-Service UUID: fee9 (0000fee9-0000-1000-8000-00805f9b34fb) 🟡
+Service UUID: fee9 (0000fee9-0000-1000-8000-00805f9b34fb) 🟡 (Standard service used by Weebill-S and Smooth 4 family)
 
-(Standard service used by Weebill-S and Smooth 4 family)
+Write Characteristic: d44bc439-abfd-45a2-b575-925416129600 ✅ (Primary command handle 0x0012, writeValueWithoutResponse)
 
-Write Characteristic: d44bc439-abfd-45a2-b575-925416129600 ✅
-
-(Primary command handle 0x0012, writeValueWithoutResponse)
-
-Notifications Characteristic: d44bc439-abfd-45a2-b575-925416129601... ✅
-
-(Status and telemetry notifications)
+Notifications Characteristic: d44bc439-abfd-45a2-b575-925416129601 ✅ (Status and telemetry notifications)
 
 ⚠️ Important: The gimbal accepts only one Bluetooth connection at a time. Make sure to close the official Zhiyun ZY Cami/Play app before connecting via browser.
 
@@ -39,9 +33,9 @@ Packets consist of a 14-byte binary payload structured as follows:
 
 Plaintext
 24 3c | LL LL | 18 12 | SS | 01 | CC | D0 D1 D2 | RR RR
-  ^       ^       ^     ^    ^    ^       ^          ^
-Header Length  Fixed Count Src  Cmd    Data      CRC16
-Byte Breakdown
+  ^       ^       ^     ^    ^    ^         ^        ^
+Header  Length  Fixed Count Src  Cmd      Data     CRC16
+Byte Breakdown:
 Byte 0-1 Header: 24 3c (Magic bytes / Start of Packet) ✅
 
 Byte 2-3 Length: 08 00 (Payload size in Little-Endian, 8 bytes) ✅
@@ -75,7 +69,7 @@ function crc16(bytes) {
   }
   return c;
 }
-
+Python
 # Python implementation
 def crc16(data, crc=0):
     for b in data:
@@ -103,7 +97,7 @@ Command 02 — Pan Axis (Left / Right) 🟡
 
 Command 03 — Roll Axis (Clockwise / Counter-Clockwise) 🟡
 
-Movement Range & Speed
+Movement Range & Speed:
 Raw Value Range: 0 to 4095
 
 Neutral Point: 2048 (Motors stationary)
@@ -139,4 +133,4 @@ Submit a GitHub Issue or Pull Request with your findings, firmware version, and 
 📚 References & Credit
 Karim Jedda: Controlling a Zhiyun Smooth 4 gimbal with Raspberry Pi (Medium Guide)
 
-Peter Maguire: Zhiyun Weebill-S BLE Protocol Analysis & Bleebil Repo (Blog | GitHub) Thank you So mucccc
+Peter Maguire: Zhiyun Weebill-S BLE Protocol Analysis & Bleebil Repo (Blog | GitHub)
